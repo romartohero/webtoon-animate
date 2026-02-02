@@ -223,7 +223,7 @@
         <!-- SCENE 1 -->
         <article class="scene" data-scene="s1" data-height="mid">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.35">
+                <div class="layer" data-layer="bg" data-parallax="0.10">
                     <img alt="Scene 1" data-src="assets/1000027941.webp" />
                 </div>
                 <div class="fx">
@@ -245,7 +245,7 @@
         <!-- SCENE 2 -->
         <article class="scene" data-scene="s2" data-height="tall">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.38">
+                <div class="layer" data-layer="bg" data-parallax="0.13">
                     <img alt="Scene 2" data-src="assets/1000027942.webp" />
                 </div>
                 <div class="fx">
@@ -266,7 +266,7 @@
         <!-- SCENE 3 -->
         <article class="scene" data-scene="s3" data-height="mid">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.33">
+                <div class="layer" data-layer="bg" data-parallax="0.10">
                     <img alt="Scene 3" data-src="assets/1000027943.webp" />
                 </div>
                 <div class="fx">
@@ -287,7 +287,7 @@
         <!-- SCENE 4 -->
         <article class="scene" data-scene="s4" data-height="tall">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.32">
+                <div class="layer" data-layer="bg" data-parallax="0.12">
                     <img alt="Scene 4" data-src="assets/1000027944.webp" />
                 </div>
                 <div class="fx">
@@ -539,17 +539,17 @@
                             // birds + sparks: appear mid scene
                             // opacity = (p > 0.15 && p < 0.75) ? 0.35 : 0.0;
                             opacity = 0.9;
-                            const drift = (microTime + s.a) * 18;
-                            dx = (s.x - 0.5) * 80 + drift;
-                            dy = (s.y - 0.5) * 60 + Math.sin((microTime + s.a) * 2) * 18;
+                            const drift = (microTime + s.a) * 6;   // beaucoup plus lent
+                            dx = (s.x - 0.5) * 20 + drift;
+                            dy = (s.y - 0.5) * 15 + Math.sin((microTime + s.a) * 2) * 6;
                             scale = 1;
                         }
 
                         if (id === 's2') {
                             // dust/pollen: very subtle, constant
                             opacity = 0.9;
-                            dx = Math.sin((microTime + s.a) * 1.7) * 40;
-                            dy = Math.cos((microTime + s.a) * 1.2) * 60;
+                            dx = Math.sin((microTime + s.a) * 1.2) * 18;
+                            dy = Math.cos((microTime + s.a)) * 22;
                             scale = 1;
                         }
 
@@ -557,8 +557,8 @@
                             // music notes: appear as you scroll into the scene, drift gently upward
                             const appear = clamp01((p - 0.18) / 0.18); // 0..1
                             opacity = 0.9;
-                            dx = Math.sin((microTime + s.a) * (1.6 + boost*0.8)) * (14 + boost*10);
-                            dy = - (microTime % 3) * 30 - easeOutCubic(appear) * 60;
+                            dx = Math.sin((microTime + s.a) * (1.2 + boost*0.4)) * (12 + boost*6);
+                            dy = -easeOutCubic(appear) * 42 + Math.cos((microTime + s.a) * 0.9) * 12;
                             scale = 0.9 + appear * 0.15;
                         }
 
