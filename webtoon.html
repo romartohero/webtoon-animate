@@ -165,12 +165,12 @@
             text-shadow: 0 8px 20px rgba(0,0,0,.35);
         }
         .fx .spark{
-            width: 6px; height:6px;
+            width: 12px; height: 12px;
             border-radius: 999px;
-            background: rgba(255,255,255,.85);
-            box-shadow: 0 0 18px rgba(255,255,255,.55);
-            font-size:0;
+            background: rgba(255,255,255,1);
+            box-shadow: 0 0 28px rgba(255,255,255,.9);
         }
+
         .fx .bird{ font-size: 18px; }
 
         /* Reduced motion: turn off transitions and effects (we also handle in JS) */
@@ -227,8 +227,8 @@
                     <img alt="Scene 1" data-src="assets/1000027941.webp" />
                 </div>
                 <div class="fx">
-                    <span class="bird" data-fx="bird1">❯</span>
-                    <span class="bird" data-fx="bird2">❯</span>
+                    <span class="bird" data-fx="bird1">🕊️</span>
+                    <span class="bird" data-fx="bird2">🕊️</span>
                     <span class="spark" data-fx="spark1"></span>
                     <span class="spark" data-fx="spark2"></span>
                 </div>
@@ -468,15 +468,29 @@
 
         // Scroll-linked "micro time" (only advances when scrolling)
         let lastScrollY = window.scrollY;
-        let microTime = 0;
+        let microTime = 0;          // devient une "phase" qui avance dans le temps
+        let lastFrameT = performance.now();
+        let scrollVelocity = 0;     // px/frame (lissé)
 
         function tick(){
+            const now = performance.now();
+            const dt = Math.min(32, now - lastFrameT); // ms, clamp pour stabilité
+            lastFrameT = now;
+
             const currentY = window.scrollY;
             const deltaY = currentY - lastScrollY;
             lastScrollY = currentY;
 
-            // microTime advances only when scroll moves; clamp so it remains subtle
-            microTime += Math.max(-2, Math.min(2, deltaY)) * 0.002;
+
+            // vitesse de scroll lissée
+            scrollVelocity = scrollVelocity * 0.85 + deltaY * 0.15;
+
+            // temps qui avance toujours (lentement)
+            microTime += (dt / 1000) * 0.9; // 0.9 = vitesse globale (ajuste à 0.5–1.5)
+            if (Math.floor(microTime) !== Math.floor(microTime - (dt/1000)*0.9)) {
+                // toutes les secondes environ
+                console.log("microTime", microTime.toFixed(2));
+            }
 
             // If reduced motion: still allow parallax but make everything gentler
             const rm = reduceMotionToggle.checked;
@@ -498,6 +512,9 @@
 
                 // FX rules per scene
                 const id = scene.getAttribute('data-scene');
+
+
+                const boost = Math.min(2.5, Math.abs(scrollVelocity) / 25); // 0..2.5
 
                 fxEls.forEach((el, idx) => {
                     const key = el.getAttribute('data-fx') || `fx${idx}`;
@@ -531,8 +548,8 @@
                         if (id === 's2') {
                             // dust/pollen: very subtle, constant
                             opacity = 0.9;
-                            dx = Math.sin((microTime + s.a) * 1.7) * 10;
-                            dy = Math.cos((microTime + s.a) * 1.2) * 16 + (p - 0.5) * 6;
+                            dx = Math.sin((microTime + s.a) * 1.7) * 40;
+                            dy = Math.cos((microTime + s.a) * 1.2) * 60;
                             scale = 1;
                         }
 
@@ -540,8 +557,8 @@
                             // music notes: appear as you scroll into the scene, drift gently upward
                             const appear = clamp01((p - 0.18) / 0.18); // 0..1
                             opacity = 0.9;
-                            dx = Math.sin((microTime + s.a) * 1.6) * 14;
-                            dy = -easeOutCubic(appear) * 70 + Math.cos((microTime + s.a) * 1.1) * 8;
+                            dx = Math.sin((microTime + s.a) * (1.6 + boost*0.8)) * (14 + boost*10);
+                            dy = - (microTime % 3) * 30 - easeOutCubic(appear) * 60;
                             scale = 0.9 + appear * 0.15;
                         }
 
@@ -556,7 +573,8 @@
                             // tap sparks: only near end (simulate “toc toc”)
                             const end = clamp01((p - 0.72) / 0.18);
                             opacity = 0.9;
-                            dx = (Math.sin((microTime + s.a) * 9) * 4) * end;
+                            // dx = (Math.sin((microTime + s.a) * 9) * 4) * end;
+                            dx = Math.sin((microTime + s.a) * (1.6 + boost*0.8)) * (14 + boost*10);
                             dy = (Math.cos((microTime + s.a) * 9) * 4) * end;
                             scale = 0.9 + end * 0.2;
                         }
@@ -571,7 +589,18 @@
                     }
 
                     el.style.opacity = opacity.toFixed(3);
-                    el.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${scale.toFixed(3)})`;
+
+                    // base position (déjà posée par placeFX)
+                    const x = baseX + dx;
+                    const y = baseY + dy;
+
+                    // bouge vraiment l'élément dans la scène
+                    el.style.left = `${x.toFixed(2)}px`;
+                    el.style.top  = `${y.toFixed(2)}px`;
+
+                    // scale seulement
+                    el.style.transform = `translate3d(0,0,0) scale(${scale.toFixed(3)})`;
+
 
                     // Make "sparks" look different from notes (no text)
                     if (el.classList.contains('spark')) {
