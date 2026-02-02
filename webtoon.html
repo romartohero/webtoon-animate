@@ -223,7 +223,7 @@
         <!-- SCENE 1 -->
         <article class="scene" data-scene="s1" data-height="mid">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.05">
+                <div class="layer" data-layer="bg" data-parallax="0.35">
                     <img alt="Scene 1" data-src="assets/1000027941.webp" />
                 </div>
                 <div class="fx">
@@ -245,7 +245,7 @@
         <!-- SCENE 2 -->
         <article class="scene" data-scene="s2" data-height="tall">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.08">
+                <div class="layer" data-layer="bg" data-parallax="0.38">
                     <img alt="Scene 2" data-src="assets/1000027942.webp" />
                 </div>
                 <div class="fx">
@@ -266,7 +266,7 @@
         <!-- SCENE 3 -->
         <article class="scene" data-scene="s3" data-height="mid">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.03">
+                <div class="layer" data-layer="bg" data-parallax="0.33">
                     <img alt="Scene 3" data-src="assets/1000027943.webp" />
                 </div>
                 <div class="fx">
@@ -287,7 +287,7 @@
         <!-- SCENE 4 -->
         <article class="scene" data-scene="s4" data-height="tall">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.02">
+                <div class="layer" data-layer="bg" data-parallax="0.32">
                     <img alt="Scene 4" data-src="assets/1000027944.webp" />
                 </div>
                 <div class="fx">
@@ -309,7 +309,7 @@
         <!-- SCENE 5 -->
         <article class="scene" data-scene="s5" data-height="short">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.02">
+                <div class="layer" data-layer="bg" data-parallax="0.32">
                     <img alt="Scene 5" data-src="assets/1000027945.webp" />
                 </div>
                 <div class="fx">
@@ -329,7 +329,7 @@
         <!-- SCENE 6 -->
         <article class="scene" data-scene="s6" data-height="tall">
             <div class="stage">
-                <div class="layer" data-layer="bg" data-parallax="0.05">
+                <div class="layer" data-layer="bg" data-parallax="0.35">
                     <img alt="Scene 6" data-src="assets/1000027946.webp" />
                 </div>
                 <div class="fx">
@@ -358,7 +358,6 @@
 </main>
 
 <script>
-    alert("JS OK");
     /**
      * Mini scroll-driven motion reader
      * - Parallax par scène (sur l'image principale)
@@ -522,16 +521,16 @@
                         if (id === 's1') {
                             // birds + sparks: appear mid scene
                             // opacity = (p > 0.15 && p < 0.75) ? 0.35 : 0.0;
-                            opacity = 1;
+                            opacity = 0.9;
                             const drift = (microTime + s.a) * 18;
-                            dx = (s.x - 0.5) * 30 + drift;
-                            dy = (s.y - 0.5) * 18 + Math.sin((microTime + s.a) * 2) * 6;
+                            dx = (s.x - 0.5) * 80 + drift;
+                            dy = (s.y - 0.5) * 60 + Math.sin((microTime + s.a) * 2) * 18;
                             scale = 1;
                         }
 
                         if (id === 's2') {
                             // dust/pollen: very subtle, constant
-                            opacity = (p > 0.05 && p < 0.95) ? 0.22 : 0.0;
+                            opacity = 0.9;
                             dx = Math.sin((microTime + s.a) * 1.7) * 10;
                             dy = Math.cos((microTime + s.a) * 1.2) * 16 + (p - 0.5) * 6;
                             scale = 1;
@@ -540,7 +539,7 @@
                         if (id === 's3' || id === 's4') {
                             // music notes: appear as you scroll into the scene, drift gently upward
                             const appear = clamp01((p - 0.18) / 0.18); // 0..1
-                            opacity = easeOutCubic(appear) * 0.75;
+                            opacity = 0.9;
                             dx = Math.sin((microTime + s.a) * 1.6) * 14;
                             dy = -easeOutCubic(appear) * 70 + Math.cos((microTime + s.a) * 1.1) * 8;
                             scale = 0.9 + appear * 0.15;
@@ -549,14 +548,14 @@
                         if (id === 's4') {
                             // glints: flicker via microTime (still scroll-driven)
                             const flick = 0.45 + 0.35 * Math.sin((microTime + s.a) * 5.0);
-                            opacity = clamp01((p > 0.15 && p < 0.9) ? flick : 0) * 0.55;
+                            opacity = 0.9;
                             dx = 0; dy = 0; scale = 1;
                         }
 
                         if (id === 's5') {
                             // tap sparks: only near end (simulate “toc toc”)
                             const end = clamp01((p - 0.72) / 0.18);
-                            opacity = end * 0.65;
+                            opacity = 0.9;
                             dx = (Math.sin((microTime + s.a) * 9) * 4) * end;
                             dy = (Math.cos((microTime + s.a) * 9) * 4) * end;
                             scale = 0.9 + end * 0.2;
@@ -564,7 +563,7 @@
 
                         if (id === 's6') {
                             // warm subtle particles: low intensity, stable authority
-                            opacity = (p > 0.2 && p < 0.9) ? 0.18 : 0.0;
+                            opacity = 0.9;
                             dx = Math.sin((microTime + s.a) * 1.1) * 8;
                             dy = Math.cos((microTime + s.a) * 1.1) * 8;
                             scale = 1;
@@ -586,7 +585,7 @@
                 // Scene-specific "shake" (simulate localized tap) by shaking the whole stage slightly (prototype)
                 if (!rm && id === 's5') {
                     const pShake = clamp01((p - 0.75) / 0.12);
-                    const shake = pShake * 2.2;
+                    const shake = pShake * 10;
                     const sx = Math.sin((microTime) * 18) * shake;
                     const sy = Math.cos((microTime) * 18) * shake;
                     scene.querySelector('.stage').style.transform = `translate3d(${sx.toFixed(2)}px, ${sy.toFixed(2)}px, 0)`;
