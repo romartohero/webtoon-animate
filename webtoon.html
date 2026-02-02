@@ -159,7 +159,7 @@
         .fx .note, .fx .spark, .fx .bird{
             position:absolute;
             font-size: 28px;
-            opacity: .0;
+            opacity: 1 !important;
             transform: translate3d(0,0,0);
             will-change: transform, opacity;
             text-shadow: 0 8px 20px rgba(0,0,0,.35);
@@ -358,6 +358,7 @@
 </main>
 
 <script>
+    alert("JS OK");
     /**
      * Mini scroll-driven motion reader
      * - Parallax par scène (sur l'image principale)
@@ -380,8 +381,10 @@
         });
 
         // Respect OS-level reduced motion (default on if user prefers)
-        const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        reduceMotionToggle.checked = prefersReduced;
+        // const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const prefersReduced = false;
+        // reduceMotionToggle.checked = prefersReduced;
+        reduceMotionToggle.checked = false;
 
         function applyReducedMotionClass(){
             document.body.classList.toggle('reduced-motion', reduceMotionToggle.checked);
