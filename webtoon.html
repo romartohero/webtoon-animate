@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>Mini Webtoon Scroll Reader (prototype)</title>
+    <style>
+        :root{
+            --bg:#0b0d12;
+            --panelBg:#111522;
+            --text:#e9ecff;
+            --muted:#a8b0d6;
+            --card:#121829;
+            --stroke:rgba(255,255,255,.12);
+            --shadow: 0 12px 32px rgba(0,0,0,.35);
+            --radius: 18px;
+        }
+        *{ box-sizing:border-box; }
+        body{
+            margin:0;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+            background: radial-gradient(1200px 800px at 50% -10%, #1a2140 0%, var(--bg) 45%, #070911 100%);
+            color:var(--text);
+            overflow-x:hidden;
+        }
+
+        header{
+            position: sticky;
+            top:0;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+            background: rgba(5,6,10,.55);
+            border-bottom: 1px solid var(--stroke);
+        }
+        .bar{
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 12px 14px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+        }
+        .title{
+            display:flex; flex-direction:column; gap:2px;
+        }
+        .title strong{ font-size:14px; letter-spacing:.2px; }
+        .title span{ font-size:12px; color:var(--muted); }
+
+        .toggles{
+            display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+        }
+        .toggle{
+            display:flex; align-items:center; gap:8px;
+            padding:8px 10px;
+            background: rgba(255,255,255,.06);
+            border:1px solid var(--stroke);
+            border-radius: 999px;
+            box-shadow: 0 6px 16px rgba(0,0,0,.18);
+            user-select:none;
+        }
+        .toggle input{ width:16px; height:16px; }
+
+        .wrap{
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 16px 14px 80px;
+        }
+
+        /* Episode column */
+        .episode{
+            display:flex;
+            flex-direction:column;
+            gap: 22px;
+        }
+
+        /* Scene panel */
+        .scene{
+            position: relative;
+            border-radius: var(--radius);
+            overflow:hidden;
+            background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+            border: 1px solid var(--stroke);
+            box-shadow: var(--shadow);
+        }
+
+        /* Make scenes tall like webtoon chunks */
+        .scene[data-height="tall"]{ height: 1050px; }
+        .scene[data-height="mid"]{ height: 820px; }
+        .scene[data-height="short"]{ height: 640px; }
+
+        .scene .stage{
+            position:absolute;
+            inset:0;
+            overflow:hidden;
+            background: var(--panelBg);
+        }
+
+        /* Layers */
+        .layer{
+            position:absolute;
+            inset:0;
+            will-change: transform, opacity, filter;
+            transform: translate3d(0,0,0);
+        }
+        .layer img{
+            position:absolute;
+            left:50%;
+            top:0;
+            width: 100%;
+            max-width: 760px; /* keep webtoon aspect friendly */
+            transform: translateX(-50%);
+            height:auto;
+            display:block;
+            user-select:none;
+            pointer-events:none;
+            filter: drop-shadow(0 12px 24px rgba(0,0,0,.25));
+        }
+
+        /* HUD text blocks */
+        .caption{
+            position:absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 14px;
+            padding: 12px 12px;
+            border-radius: 14px;
+            background: rgba(0,0,0,.32);
+            border: 1px solid rgba(255,255,255,.12);
+            backdrop-filter: blur(8px);
+            display:flex;
+            gap:10px;
+            align-items:flex-start;
+        }
+        .caption .chip{
+            flex:0 0 auto;
+            font-size:12px;
+            color: #dbe2ff;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.08);
+            border: 1px solid rgba(255,255,255,.12);
+        }
+        .caption .text{
+            font-size: 13px;
+            color: var(--text);
+            line-height: 1.35;
+        }
+        .caption .text small{ color: var(--muted); display:block; margin-top:4px; }
+
+        /* Floating FX elements (notes, dust, birds) */
+        .fx{
+            position:absolute;
+            left:0; top:0;
+            width:100%; height:100%;
+            pointer-events:none;
+            overflow:hidden;
+        }
+        .fx .note, .fx .spark, .fx .bird{
+            position:absolute;
+            font-size: 28px;
+            opacity: .0;
+            transform: translate3d(0,0,0);
+            will-change: transform, opacity;
+            text-shadow: 0 8px 20px rgba(0,0,0,.35);
+        }
+        .fx .spark{
+            width: 6px; height:6px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.85);
+            box-shadow: 0 0 18px rgba(255,255,255,.55);
+            font-size:0;
+        }
+        .fx .bird{ font-size: 18px; }
+
+        /* Reduced motion: turn off transitions and effects (we also handle in JS) */
+        .reduced-motion .layer,
+        .reduced-motion .fx .note,
+        .reduced-motion .fx .spark,
+        .reduced-motion .fx .bird{
+            transition: none !important;
+            filter: none !important;
+        }
+
+        /* Footer hint */
+        .hint{
+            margin-top: 14px;
+            padding: 14px 14px;
+            border-radius: 14px;
+            border: 1px dashed rgba(255,255,255,.18);
+            color: var(--muted);
+            background: rgba(255,255,255,.03);
+            line-height:1.5;
+            font-size: 13px;
+        }
+        code{ background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 8px; }
+    </style>
+</head>
+
+<body>
+<header>
+    <div class="bar">
+        <div class="title">
+            <strong>Mini reader webtoon animé au scroll</strong>
+            <span>Prototype : parallax + micro FX (tout stoppé quand tu arrêtes de scroller)</span>
+        </div>
+        <div class="toggles">
+            <label class="toggle" title="Désactive les micro-effets et réduit les mouvements">
+                <input id="reduceMotion" type="checkbox" />
+                <span>Réduire les animations</span>
+            </label>
+            <label class="toggle" title="Optionnel : tu peux brancher un fichier audio ensuite">
+                <input id="ambience" type="checkbox" />
+                <span>Ambiance (placeholder)</span>
+            </label>
+        </div>
+    </div>
+</header>
+
+<main class="wrap">
+    <section class="episode" id="episode">
+
+        <!-- SCENE 1 -->
+        <article class="scene" data-scene="s1" data-height="mid">
+            <div class="stage">
+                <div class="layer" data-layer="bg" data-parallax="0.05">
+                    <img alt="Scene 1" data-src="assets/1000027941.webp" />
+                </div>
+                <div class="fx">
+                    <span class="bird" data-fx="bird1">❯</span>
+                    <span class="bird" data-fx="bird2">❯</span>
+                    <span class="spark" data-fx="spark1"></span>
+                    <span class="spark" data-fx="spark2"></span>
+                </div>
+                <div class="caption">
+                    <div class="chip">Scène 1</div>
+                    <div class="text">
+                        Établissement du lieu : ciel + calme + profondeur.
+                        <small>Effets : oiseaux (micro-dérive), particules, léger souffle de lumière.</small>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- SCENE 2 -->
+        <article class="scene" data-scene="s2" data-height="tall">
+            <div class="stage">
+                <div class="layer" data-layer="bg" data-parallax="0.08">
+                    <img alt="Scene 2" data-src="assets/1000027942.webp" />
+                </div>
+                <div class="fx">
+                    <span class="spark" data-fx="dust1"></span>
+                    <span class="spark" data-fx="dust2"></span>
+                    <span class="spark" data-fx="dust3"></span>
+                </div>
+                <div class="caption">
+                    <div class="chip">Scène 2</div>
+                    <div class="text">
+                        Architecture + observateurs : parallax doux pour donner de la profondeur.
+                        <small>Effets : poussières/pollen, souffle discret.</small>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- SCENE 3 -->
+        <article class="scene" data-scene="s3" data-height="mid">
+            <div class="stage">
+                <div class="layer" data-layer="bg" data-parallax="0.03">
+                    <img alt="Scene 3" data-src="assets/1000027943.webp" />
+                </div>
+                <div class="fx">
+                    <span class="note" data-fx="note1">♪</span>
+                    <span class="note" data-fx="note2">♫</span>
+                    <span class="note" data-fx="note3">♪</span>
+                </div>
+                <div class="caption">
+                    <div class="chip">Scène 3</div>
+                    <div class="text">
+                        Musique + “hmm~” : notes apparaissent et dérivent au scroll.
+                        <small>Effets : notes (fade + drift), micro respiration.</small>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- SCENE 4 -->
+        <article class="scene" data-scene="s4" data-height="tall">
+            <div class="stage">
+                <div class="layer" data-layer="bg" data-parallax="0.02">
+                    <img alt="Scene 4" data-src="assets/1000027944.webp" />
+                </div>
+                <div class="fx">
+                    <span class="note" data-fx="note4">♪</span>
+                    <span class="note" data-fx="note5">♫</span>
+                    <span class="spark" data-fx="glint1"></span>
+                    <span class="spark" data-fx="glint2"></span>
+                </div>
+                <div class="caption">
+                    <div class="chip">Scène 4</div>
+                    <div class="text">
+                        Gourmandise / ASMR : scintillement très lent + notes.
+                        <small>Effets : “glints” (opacité), notes (dérive).</small>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- SCENE 5 -->
+        <article class="scene" data-scene="s5" data-height="short">
+            <div class="stage">
+                <div class="layer" data-layer="bg" data-parallax="0.02">
+                    <img alt="Scene 5" data-src="assets/1000027945.webp" />
+                </div>
+                <div class="fx">
+                    <span class="spark" data-fx="tap1"></span>
+                    <span class="spark" data-fx="tap2"></span>
+                </div>
+                <div class="caption">
+                    <div class="chip">Scène 5</div>
+                    <div class="text">
+                        Tapotement / bruit : petit “shake” localisé sur la fin de scène.
+                        <small>Effets : micro shake (dernier tiers).</small>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- SCENE 6 -->
+        <article class="scene" data-scene="s6" data-height="tall">
+            <div class="stage">
+                <div class="layer" data-layer="bg" data-parallax="0.05">
+                    <img alt="Scene 6" data-src="assets/1000027946.webp" />
+                </div>
+                <div class="fx">
+                    <span class="spark" data-fx="warm1"></span>
+                    <span class="spark" data-fx="warm2"></span>
+                </div>
+                <div class="caption">
+                    <div class="chip">Scène 6</div>
+                    <div class="text">
+                        Révélation : l’autorité s’installe. Un léger focus + stabilité.
+                        <small>Effets : micro respiration, scintillement minimal.</small>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <div class="hint">
+            <strong>Pour que ça marche chez toi :</strong><br/>
+            1) Mets tes images dans un dossier <code>assets/</code> à côté de ce fichier, avec les noms indiqués
+            (ou modifie les <code>data-src</code>).<br/>
+            2) Ouvre ce fichier via un petit serveur local (ex: <code>python -m http.server</code>) pour éviter les soucis de chargement.<br/>
+            3) Ensuite, on peut enrichir : calques multiples, masque d’ombre, depth map, sprite sheets, etc.
+        </div>
+
+    </section>
+</main>
+
+<script>
+    /**
+     * Mini scroll-driven motion reader
+     * - Parallax par scène (sur l'image principale)
+     * - FX procéduraux (notes, poussière, oiseaux, scintillements)
+     * - Tout est "scroll-linked" : si tu ne scrolles pas, visuellement ça se fige
+     *
+     * IMPORTANT: c'est un prototype simple, 1 image par scène.
+     * La version “pro” : plusieurs calques par scène + depth map + masques.
+     */
+
+    (function(){
+        const root = document.documentElement;
+        const episode = document.getElementById('episode');
+        const reduceMotionToggle = document.getElementById('reduceMotion');
+        const ambienceToggle = document.getElementById('ambience');
+
+        // Load images from data-src into src (so you can keep it as template)
+        document.querySelectorAll('img[data-src]').forEach(img => {
+            img.src = img.getAttribute('data-src');
+        });
+
+        // Respect OS-level reduced motion (default on if user prefers)
+        const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        reduceMotionToggle.checked = prefersReduced;
+
+        function applyReducedMotionClass(){
+            document.body.classList.toggle('reduced-motion', reduceMotionToggle.checked);
+        }
+        applyReducedMotionClass();
+
+        reduceMotionToggle.addEventListener('change', applyReducedMotionClass);
+
+        // Ambience placeholder (no autoplay audio here)
+        ambienceToggle.addEventListener('change', () => {
+            if (ambienceToggle.checked) {
+                console.log('[Ambience] ON (placeholder). Branche un <audio> + WebAudio si tu veux.');
+            } else {
+                console.log('[Ambience] OFF');
+            }
+        });
+
+        // Helpers
+        const clamp01 = (v) => Math.max(0, Math.min(1, v));
+        const lerp = (a,b,t) => a + (b-a) * t;
+        const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+        // Scene registry
+        const scenes = Array.from(document.querySelectorAll('.scene')).map(scene => {
+            const stage = scene.querySelector('.stage');
+            const layers = Array.from(scene.querySelectorAll('.layer'));
+            const fx = scene.querySelector('.fx');
+
+            // FX elements inside scene
+            const fxEls = fx ? Array.from(fx.children) : [];
+
+            // Seed positions once
+            const seed = {};
+            fxEls.forEach((el, idx) => {
+                const key = el.getAttribute('data-fx') || `fx${idx}`;
+                seed[key] = {
+                    x: Math.random(),
+                    y: Math.random(),
+                    a: Math.random()
+                };
+            });
+
+            return { scene, stage, layers, fx, fxEls, seed };
+        });
+
+        // Position some FX deterministically per scene
+        function placeFX(sceneObj){
+            const { scene, fxEls, seed } = sceneObj;
+            const rect = scene.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            fxEls.forEach((el, idx) => {
+                const key = el.getAttribute('data-fx') || `fx${idx}`;
+                const s = seed[key];
+                // base position
+                const x = lerp(0.08, 0.88, s.x) * w;
+                const y = lerp(0.12, 0.72, s.y) * h;
+                el.style.left = x + 'px';
+                el.style.top  = y + 'px';
+            });
+        }
+
+        // Initial placement & on resize
+        function relayout(){
+            scenes.forEach(placeFX);
+        }
+        window.addEventListener('resize', relayout);
+        relayout();
+
+        // Compute progress of a scene based on viewport
+        function sceneProgress(sceneEl){
+            const r = sceneEl.getBoundingClientRect();
+            const vh = window.innerHeight;
+
+            // progress = how far the top has moved through the viewport range
+            // When scene top is at bottom => 0, when scene bottom is at top => 1
+            const total = r.height + vh;
+            const passed = vh - r.top;
+            return clamp01(passed / total);
+        }
+
+        // Scroll-linked "micro time" (only advances when scrolling)
+        let lastScrollY = window.scrollY;
+        let microTime = 0;
+
+        function tick(){
+            const currentY = window.scrollY;
+            const deltaY = currentY - lastScrollY;
+            lastScrollY = currentY;
+
+            // microTime advances only when scroll moves; clamp so it remains subtle
+            microTime += Math.max(-2, Math.min(2, deltaY)) * 0.002;
+
+            // If reduced motion: still allow parallax but make everything gentler
+            const rm = reduceMotionToggle.checked;
+
+            scenes.forEach(({ scene, layers, fxEls, seed }) => {
+                const p = sceneProgress(scene);
+
+                // Parallax layers
+                layers.forEach(layer => {
+                    const parallax = parseFloat(layer.getAttribute('data-parallax') || '0') || 0;
+                    const strength = rm ? parallax * 0.35 : parallax;
+                    // Move up slightly as user progresses (depth illusion)
+                    const y = (p - 0.5) * 120 * strength;
+                    // Tiny focus effect mid-scene (very subtle)
+                    const focus = rm ? 0 : (Math.abs(p - 0.55) < 0.18 ? 0.0 : 0.0);
+                    layer.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
+                    if (focus) layer.style.filter = `blur(${focus}px)`;
+                });
+
+                // FX rules per scene
+                const id = scene.getAttribute('data-scene');
+
+                fxEls.forEach((el, idx) => {
+                    const key = el.getAttribute('data-fx') || `fx${idx}`;
+                    const s = seed[key];
+                    const baseX = parseFloat(el.style.left || '0');
+                    const baseY = parseFloat(el.style.top || '0');
+
+                    // Defaults
+                    let opacity = 0;
+                    let dx = 0, dy = 0;
+                    let scale = 1;
+
+                    if (rm) {
+                        // Reduced motion: keep some presence but minimal movement
+                        opacity = (p > 0.15 && p < 0.85) ? 0.25 : 0.0;
+                        dx = 0;
+                        dy = 0;
+                        scale = 1;
+                    } else {
+                        // Normal mode per scene
+                        if (id === 's1') {
+                            // birds + sparks: appear mid scene
+                            // opacity = (p > 0.15 && p < 0.75) ? 0.35 : 0.0;
+                            opacity = 1;
+                            const drift = (microTime + s.a) * 18;
+                            dx = (s.x - 0.5) * 30 + drift;
+                            dy = (s.y - 0.5) * 18 + Math.sin((microTime + s.a) * 2) * 6;
+                            scale = 1;
+                        }
+
+                        if (id === 's2') {
+                            // dust/pollen: very subtle, constant
+                            opacity = (p > 0.05 && p < 0.95) ? 0.22 : 0.0;
+                            dx = Math.sin((microTime + s.a) * 1.7) * 10;
+                            dy = Math.cos((microTime + s.a) * 1.2) * 16 + (p - 0.5) * 6;
+                            scale = 1;
+                        }
+
+                        if (id === 's3' || id === 's4') {
+                            // music notes: appear as you scroll into the scene, drift gently upward
+                            const appear = clamp01((p - 0.18) / 0.18); // 0..1
+                            opacity = easeOutCubic(appear) * 0.75;
+                            dx = Math.sin((microTime + s.a) * 1.6) * 14;
+                            dy = -easeOutCubic(appear) * 70 + Math.cos((microTime + s.a) * 1.1) * 8;
+                            scale = 0.9 + appear * 0.15;
+                        }
+
+                        if (id === 's4') {
+                            // glints: flicker via microTime (still scroll-driven)
+                            const flick = 0.45 + 0.35 * Math.sin((microTime + s.a) * 5.0);
+                            opacity = clamp01((p > 0.15 && p < 0.9) ? flick : 0) * 0.55;
+                            dx = 0; dy = 0; scale = 1;
+                        }
+
+                        if (id === 's5') {
+                            // tap sparks: only near end (simulate “toc toc”)
+                            const end = clamp01((p - 0.72) / 0.18);
+                            opacity = end * 0.65;
+                            dx = (Math.sin((microTime + s.a) * 9) * 4) * end;
+                            dy = (Math.cos((microTime + s.a) * 9) * 4) * end;
+                            scale = 0.9 + end * 0.2;
+                        }
+
+                        if (id === 's6') {
+                            // warm subtle particles: low intensity, stable authority
+                            opacity = (p > 0.2 && p < 0.9) ? 0.18 : 0.0;
+                            dx = Math.sin((microTime + s.a) * 1.1) * 8;
+                            dy = Math.cos((microTime + s.a) * 1.1) * 8;
+                            scale = 1;
+                        }
+                    }
+
+                    el.style.opacity = opacity.toFixed(3);
+                    el.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${scale.toFixed(3)})`;
+
+                    // Make "sparks" look different from notes (no text)
+                    if (el.classList.contains('spark')) {
+                        // Subtle size variety
+                        const size = 5 + Math.floor(s.x * 4);
+                        el.style.width = size + 'px';
+                        el.style.height = size + 'px';
+                    }
+                });
+
+                // Scene-specific "shake" (simulate localized tap) by shaking the whole stage slightly (prototype)
+                if (!rm && id === 's5') {
+                    const pShake = clamp01((p - 0.75) / 0.12);
+                    const shake = pShake * 2.2;
+                    const sx = Math.sin((microTime) * 18) * shake;
+                    const sy = Math.cos((microTime) * 18) * shake;
+                    scene.querySelector('.stage').style.transform = `translate3d(${sx.toFixed(2)}px, ${sy.toFixed(2)}px, 0)`;
+                } else {
+                    scene.querySelector('.stage').style.transform = 'translate3d(0,0,0)';
+                }
+            });
+
+            requestAnimationFrame(tick);
+        }
+
+        requestAnimationFrame(tick);
+    })();
+</script>
+</body>
+</html>
